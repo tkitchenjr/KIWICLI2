@@ -64,7 +64,6 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
         )
         db.session.flush()
     except Exception as e:
-        db.session.rollback()
         raise TradeExecutionException(f'Failed to execute purchase order due to error: {str(e)}')
 
 
@@ -118,5 +117,4 @@ def liquidate_investment(portfolio_id: int, ticker: str, quantity: int, sale_pri
         )
         db.session.flush()
     except Exception as e:
-        db.session.rollback()
         raise TradeExecutionException(f'Failed to liquidate investment due to error: {str(e)}')

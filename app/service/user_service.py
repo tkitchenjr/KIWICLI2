@@ -16,7 +16,6 @@ def get_user_by_username(username: str) -> User | None:
             raise UnsupportedUserOperationError('Username cannot be empty')
         return db.session.query(User).filter_by(username=username).one_or_none()
     except Exception as e:
-        db.session.rollback()
         raise UnsupportedUserOperationError(f'Failed to retrieve user due to error: {str(e)}')
 
 
@@ -25,7 +24,6 @@ def get_all_users() -> List[User]:
         users = db.session.query(User).all()
         return users
     except Exception as e:
-        db.session.rollback()
         raise UnsupportedUserOperationError(f'Failed to retrieve users due to error: {str(e)}')
 
 
@@ -37,7 +35,6 @@ def update_user_balance(username: str, new_balance: float):
         user.balance = new_balance
         db.session.flush()
     except Exception as e:
-        db.session.rollback()
         raise UnsupportedUserOperationError(f'Failed to update user balance due to error: {str(e)}')
 
 
@@ -54,7 +51,6 @@ def create_user(username: str, password: str, firstname: str, lastname: str, bal
         )
         db.session.flush()
     except Exception as e:
-        db.session.rollback()
         raise UnsupportedUserOperationError(f'Failed to create user due to error: {str(e)}')
 
 
@@ -74,5 +70,4 @@ def delete_user(username: str):
     except UnsupportedUserOperationError as e:
         raise e
     except Exception as e:
-        db.session.rollback()
         raise UnsupportedUserOperationError(f'Failed to delete user due to error: {str(e)}')
