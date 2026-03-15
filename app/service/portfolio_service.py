@@ -12,11 +12,14 @@ class PortfolioOperationError(Exception):
     pass
 
 
-def create_portfolio(name: str, description: str, user: User) -> int:
-    if not name or not description or not user:
+def create_portfolio(name: str, description: str, username: str) -> int:
+    if not name or not description or not username:
         raise UnsupportedPortfolioOperationError(
-            f'Invalid input[name:{name}, description: {description}, user: {user}]. Please try again.'
+            f'Invalid input[name:{name}, description: {description}, username: {username}]. Please try again.'
         )
+    user = db.session.query(User).filter_by(username=username).one_or_none()
+    if not user:
+        raise UnsupportedPortfolioOperationError(f'User with username {username} does not exist')
     portfolio = Portfolio(name=name, description=description, user=user)
     try:
         db.session.add(portfolio)

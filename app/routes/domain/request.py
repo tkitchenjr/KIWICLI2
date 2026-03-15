@@ -2,10 +2,9 @@ from pydantic import BaseModel, Field
 
 # Portfolio Request Schemas
 class CreatePortfolioRequest(BaseModel):
-    username: str
-    description: str
-    user: str
-
+    name: str = Field(min_length=1, max_length=100, description="Name of the portfolio")
+    description: str = Field(min_length=1, max_length=255, description="Description of the portfolio")
+    username: str = Field(min_length=1, max_length=30, description="Username of the portfolio owner")
 
 # User Request Schemas
 class CreateUserRequest(BaseModel):
