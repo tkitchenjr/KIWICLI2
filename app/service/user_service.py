@@ -5,10 +5,8 @@ from sqlalchemy.exc import IntegrityError
 from app.db import db
 from app.models.User import User
 
-
 class UnsupportedUserOperationError(Exception):
     pass
-
 
 def get_user_by_username(username: str) -> User | None:
     try:
