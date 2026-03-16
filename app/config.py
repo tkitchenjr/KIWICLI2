@@ -3,10 +3,11 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+load_dotenv('api_key.env')
 
 
 class Config:
-    pass
+    ALPHAVANTAGE_API_KEY = os.environ.get('API_KEY')
 
 
 class TestConfig(Config):
