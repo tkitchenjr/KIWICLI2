@@ -1,8 +1,8 @@
 import datetime
 
 from app.db import db
-from app.models import Investment, Portfolio, Security, Transaction
-
+from app.models import Investment, Portfolio, Transaction
+from app.service.alpha_vantage_client import get_quote
 
 class TradeExecutionException(Exception):
     pass
@@ -36,8 +36,8 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
         user = portfolio.user
         if not user:
             raise TradeExecutionException(f'User associated with the portfolio ({portfolio_id}) does not exist.')
-
-        security = db.session.query(Security).filter_by(ticker=ticker).one_or_none()
+    
+        security = get_quote(ticker)
         if not security:
             raise TradeExecutionException(f'Security with ticker {ticker} does not exist.')
         total_cost = security.price * quantity
@@ -48,7 +48,7 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
         if existing_investment:
             existing_investment.quantity += quantity
         else:
-            portfolio.investments.append(Investment(ticker=ticker, quantity=quantity, security=security))
+            portfolio.investments.append(Investment(ticker=ticker, quantity=quantity))
 
         user.balance -= total_cost
         db.session.add(
