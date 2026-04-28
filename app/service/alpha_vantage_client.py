@@ -1,15 +1,11 @@
-from app.config import Config
 from dataclasses import dataclass
 import requests
 from flask_caching import SimpleCache
+from app.config import get_api_key, AlphaVantageError
 
 # Initialize Cache variable
 cache = SimpleCache(default_timeout=300) 
 
-
-#Alpha Vantage Error Handling
-class AlphaVantageError(Exception):
-    pass
 
 #Security Quote Dataclass
 # ticker - str
@@ -24,13 +20,7 @@ class SecurityQuote:
     price: float
     issuer: str
 
-# get_api_key() -> str
-#Private helper function to retrieve the API key from the application configuration
-def get_api_key():
-    api_key = Config.ALPHAVANTAGE_API_KEY
-    if not api_key:
-        raise AlphaVantageError('Alpha Vantage API key is not configured. Please set the API_KEY environment variable.')
-    return api_key
+
 
 # get_company_name(ticker:str) ->str |None — 
 # Queries the Alpha Vantage API and returns the issuer name associated with the given ticker symbol. 
@@ -78,6 +68,8 @@ def get_price_data(ticker: str) -> dict | None:
     response.raise_for_status()
     data = response.json()
 
+    if not data:
+        raise AlphaVantageError('No price data found for the given ticker.')
     if "Time Series (5min)" not in data:
         return None
 
