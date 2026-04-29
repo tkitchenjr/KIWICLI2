@@ -1,4 +1,3 @@
-from dataclasses import asdict
 from flask import Blueprint, jsonify, g
 
 import app.service.security_service as security_service
@@ -14,7 +13,7 @@ def get_security(ticker):
     security = security_service.get_security_by_ticker(ticker)
     if security is None:
         return jsonify(ErrorResponse(error='Not found', detail=f'Security {ticker} not found').model_dump()), 404
-    return jsonify(asdict(security)), 200
+    return jsonify({'name': security}), 200
 
 
 @security_bp.route('/<ticker>/transactions', methods=['GET'])
