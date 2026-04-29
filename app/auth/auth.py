@@ -45,7 +45,7 @@ def validate_token(token: str) -> dict:
     public_key = jwk.construct(jwks[kid])
     
     # Decode and verify token
-    claims = jwt.decode(token, public_key, algorithms=['RS256'], audience=COGNITO_CLIENT_ID)
+    claims = jwt.decode(token, public_key, algorithms=['RS256'], audience=COGNITO_CLIENT_ID, issuer=f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/{COGNITO_POOL_ID}")
     
     # Verify it's an access token
     if claims['token_use'] != 'access':

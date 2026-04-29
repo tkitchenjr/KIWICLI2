@@ -68,8 +68,8 @@ def update_balance():
     db.session.commit()
     return jsonify({'message': 'User balance updated successfully'}), 200
 
-
 @user_bp.route('/<username>', methods=['DELETE'])
+@requires_auth
 def delete_user(username):
     user = user_service.get_user_by_username(username)
     if user is None:
@@ -78,8 +78,8 @@ def delete_user(username):
     db.session.commit()
     return jsonify({'message': 'User deleted successfully'}), 200
 
-    
 @user_bp.route('/<username>/transactions', methods=['GET'])
+@requires_auth 
 def get_user_transactions(username):
     user = user_service.get_user_by_username(username)
     if user is None:
