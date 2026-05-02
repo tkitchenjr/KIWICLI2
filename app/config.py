@@ -1,9 +1,7 @@
 import os
+
 from dotenv import load_dotenv
 
-#Global Alpha Vantage Error Handling
-class AlphaVantageError(Exception):
-    pass
 load_dotenv()
 load_dotenv('api_key.env')
 
@@ -11,13 +9,6 @@ load_dotenv('api_key.env')
 class Config:
     ALPHAVANTAGE_API_KEY = os.environ.get('API_KEY')
 
-# get_api_key() -> str
-#Private helper function to retrieve the API key from the application configuration
-def get_api_key():
-    api_key = Config.ALPHAVANTAGE_API_KEY
-    if not api_key:
-        raise AlphaVantageError('Alpha Vantage API key is not configured. Please set the API_KEY environment variable.')
-    return api_key
 
 class TestConfig(Config):
     TESTING = True
