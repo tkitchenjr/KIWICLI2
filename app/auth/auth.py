@@ -7,17 +7,28 @@ import requests
 from jose import jwt, jwk, JWTError
 from flask import request, jsonify, g
 
-# ─── Configuration ──────────────────────────────────────────────────────────
-# Load the Cognito region, user pool ID, and app client ID from environment
-# variables. Never hard-code these values in source code.
-COGNITO_REGION    = os.environ["COGNITO_REGION"]
-COGNITO_POOL_ID   = os.environ["COGNITO_POOL_ID"]
-COGNITO_CLIENT_ID = os.environ["COGNITO_CLIENT_ID"]
+# Load the Cognito region, user pool ID, and client ID from environment variables.
+# Safe environment variable access - won't crash on import if not set
+COGNITO_REGION    = os.environ.get("COGNITO_REGION")
+COGNITO_POOL_ID   = os.environ.get("COGNITO_POOL_ID") 
+COGNITO_CLIENT_ID = os.environ.get("COGNITO_CLIENT_ID")
 
-JWKS_URL = (
-    f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/"
-    f"{COGNITO_POOL_ID}/.well-known/jwks.json"
-)
+# Validation helper - follows the configuration pattern
+def _validate_auth_config():
+    """Validate that all required auth environment variables are set."""
+    if not COGNITO_REGION:
+        raise ValueError('Cognito region is not configured. Please set the COGNITO_REGION environment variable.')
+    if not COGNITO_POOL_ID:
+        raise ValueError('Cognito pool ID is not configured. Please set the COGNITO_POOL_ID environment variable.')
+    if not COGNITO_CLIENT_ID:
+        raise ValueError('Cognito client ID is not configured. Please set the COGNITO_CLIENT_ID environment variable.')
+    return COGNITO_REGION, COGNITO_POOL_ID, COGNITO_CLIENT_ID
+
+# surface attributes for jwks url with helper function that validates variables
+def _get_jwks_url():
+    """Get JWKS URL - validates config when called."""
+    region, pool_id, _ = _validate_auth_config()
+    return f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/jwks.json"
 
 # Module-level cache so that Cognito's public keys are only fetched once,
 # rather than on every incoming request.
@@ -28,7 +39,8 @@ def _get_jwks() -> dict:
     """Fetch Cognito's public keys."""
     global _jwks_cache
     if _jwks_cache is None:
-        response = requests.get(JWKS_URL)
+        jwks_url = _get_jwks_url()  # Validates config here
+        response = requests.get(jwks_url)
         jwks = response.json()
         _jwks_cache = {key['kid']: key for key in jwks['keys']}
     return _jwks_cache
@@ -44,8 +56,9 @@ def validate_token(token: str) -> dict:
     jwks = _get_jwks()
     public_key = jwk.construct(jwks[kid])
     
-    # Decode and verify token
-    claims = jwt.decode(token, public_key, algorithms=['RS256'], audience=COGNITO_CLIENT_ID, issuer=f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/{COGNITO_POOL_ID}")
+    # Decode and verify token  
+    region, pool_id, client_id = _validate_auth_config()  # Validates config here
+    claims = jwt.decode(token, public_key, algorithms=['RS256'], audience=client_id, issuer=f"https://cognito-idp.{region}.amazonaws.com/{pool_id}")
     
     # Verify it's an access token
     if claims['token_use'] != 'access':
