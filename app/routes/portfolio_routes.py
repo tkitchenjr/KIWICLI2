@@ -150,16 +150,9 @@ def get_portfolio_transactions(portfolio_id):
         portfolio = portfolio_service.get_portfolio_by_id(portfolio_id)
         if not portfolio:
             return jsonify({'error': 'Portfolio not found'}), 404
-        
         # Check authorization (viewer level required for read access)
-        if portfolio.owner == authenticated_username:
-            # Owner has full access
-            pass
-        else:
-            # Check granted access
-            user_role = portfolio_access_service.check_user_access(portfolio_id, authenticated_username)
-            if not user_role:
-                return jsonify({'error': 'Access denied - you do not have access to this portfolio'}), 403
+        if  portfolio.owner != authenticated_username:
+            return jsonify({'error': 'Access denied - you do not have access to this portfolio'}), 403
         
         transactions = transaction_service.get_transactions_by_portfolio_id(portfolio_id)
         return jsonify([transaction.__to_dict__() for transaction in transactions]), 200
