@@ -3,6 +3,9 @@ from flask import Blueprint, jsonify, request, g
 from app.db import db
 from app.service import trade_service
 from app.auth.auth import requires_auth
+import app.service.portfolio_access_service as portfolio_access_service
+import app.service.portfolio_service as portfolio_service
+from app.service.portfolio_access_service import PortfolioAccessError
 
 from app.routes.domain.request import ExecutePurchaseOrderRequest, LiquidateInvestmentRequest
 

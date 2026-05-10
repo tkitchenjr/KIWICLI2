@@ -29,3 +29,10 @@ class LiquidateInvestmentRequest(BaseModel):
     ticker: str = Field(min_length=1, max_length=100, description="Stock ticker symbol to liquidate")
     quantity: int = Field(gt=0, description="Quantity of the stock to liquidate")
     sale_price: float = Field(gt=0, description="Sale price per unit for the stock being liquidated")
+
+class GrantAccessRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=30, description="Username of the user to grant access to")
+    role: str = Field(pattern="^(viewer|manager)$", description="Role to assign: 'viewer' or 'manager'")
+
+class RevokeAccessRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=30, description="Username of the user to revoke access from")
