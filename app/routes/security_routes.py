@@ -30,7 +30,11 @@ def get_security_transactions(ticker):
     user_transactions = []
     for transaction in transactions:
         # Assuming the transaction has a portfolio relationship
-        if hasattr(transaction, 'portfolio') and transaction.portfolio.owner == authenticated_username:
+        if (
+            hasattr(transaction, 'portfolio')
+            and transaction.portfolio is not None
+            and transaction.portfolio.owner == authenticated_username
+        ):
             user_transactions.append(transaction)
     
     return jsonify([transaction.__to_dict__() for transaction in user_transactions]), 200

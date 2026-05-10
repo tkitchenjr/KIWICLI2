@@ -73,14 +73,14 @@ def requires_auth(handler):
     def wrapper(*args, **kwargs):
         auth_header = request.headers.get('Authorization', '')
         if not auth_header.startswith('Bearer '):
-            return jsonify({'error': 'Missing or invalid Authorization header'}), 401
+            return jsonify({'error': 'Missing or invalid Authorization header'}), 403
         
         token = auth_header[7:]  # Remove 'Bearer ' prefix
         
         try:
             g.current_user = validate_token(token)
         except Exception:
-            return jsonify({'error': 'Invalid token'}), 401
+            return jsonify({'error': 'Invalid token'}), 403
         
         return handler(*args, **kwargs)
     return wrapper

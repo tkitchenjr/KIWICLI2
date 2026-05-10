@@ -63,6 +63,8 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
             )
         )
         db.session.flush()
+    except InsufficientFundsError:
+        raise
     except Exception as e:
         raise TradeExecutionException(f'Failed to execute purchase order due to error: {str(e)}')
 

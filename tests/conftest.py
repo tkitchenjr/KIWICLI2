@@ -7,9 +7,9 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 from typing import Generator
 
-import app.database as db
+import app.db as db
 import pytest
-from app.database import Base
+from app.models import Base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -39,19 +39,25 @@ def connection(engine):
 
 @pytest.fixture(scope='function')
 def db_session(connection, monkeypatch) -> Generator[Session]:
-    trans = connection.begin()
+    # Clear any failed transaction state left behind by a prior test.
+    if connection.in_transaction():
+        connection.rollback()
+
+    trans = connection.begin_nested()
 
     TestingSessionLocal = sessionmaker(bind=connection, autoflush=False, autocommit=False, expire_on_commit=False)
 
     session = TestingSessionLocal()
     _populate_database(session)
 
-    monkeypatch.setattr(db, 'get_session', lambda: session, raising=True)
+    monkeypatch.setattr(db, 'session', session, raising=False)
 
     try:
         yield session
     finally:
-        trans.rollback()
+        session.rollback()
+        if trans.is_active:
+            trans.rollback()
         session.close()
 
 

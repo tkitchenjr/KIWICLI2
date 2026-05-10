@@ -12,14 +12,16 @@ class PortfolioOperationError(Exception):
     pass
 
 
-def create_portfolio(name: str, description: str, username: str) -> int:
-    if not name or not description or not username:
+def create_portfolio(name: str, description: str, username: str | User) -> int:
+    username_value = username.username if isinstance(username, User) else username
+
+    if not name or not description or not username_value:
         raise UnsupportedPortfolioOperationError(
-            f'Invalid input[name:{name}, description: {description}, username: {username}]. Please try again.'
+            f'Invalid input[name:{name}, description: {description}, username: {username_value}]. Please try again.'
         )
-    user = db.session.query(User).filter_by(username=username).one_or_none()
+    user = db.session.query(User).filter_by(username=username_value).one_or_none()
     if not user:
-        raise UnsupportedPortfolioOperationError(f'User with username {username} does not exist')
+        raise UnsupportedPortfolioOperationError(f'User with username {username_value} does not exist')
     portfolio = Portfolio(name=name, description=description, user=user)
     try:
         db.session.add(portfolio)
@@ -62,3 +64,12 @@ def delete_portfolio(portfolio_id: int):
         db.session.flush()
     except Exception as e:
         raise e
+
+
+def liquidate_investment(portfolio_id: int, ticker: str, quantity: int, sale_price: float):
+    try:
+        from app.service.trade_service import liquidate_investment as trade_liquidate_investment
+
+        trade_liquidate_investment(portfolio_id, ticker, quantity, sale_price)
+    except Exception as e:
+        raise UnsupportedPortfolioOperationError(str(e))
