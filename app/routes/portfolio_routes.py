@@ -60,6 +60,10 @@ def get_portfolios_by_user(username):
 def create_portfolio():
     # Use authenticated user's username instead of trusting request data
     authenticated_username = g.current_user.get('username')
+    role = g.current_user.get('role', 'owner')
+
+    if role != 'owner':
+        return jsonify({'error': 'Access denied - only owners can create portfolios'}), 403
     
     create_portfolio_request = CreatePortfolioRequest(**request.get_json())
     
@@ -82,6 +86,10 @@ def create_portfolio():
 @portfolio_bp.route('/<int:portfolio_id>', methods=['DELETE'])
 @requires_auth
 def delete_portfolio(portfolio_id):
+    role = g.current_user.get('role', 'owner')
+    if role != 'owner':
+        return jsonify({'error': 'Access denied - only owners can delete portfolios'}), 403
+
     portfolio = portfolio_service.get_portfolio_by_id(portfolio_id)
     if portfolio is None:
         return jsonify(ErrorResponse(error='Not found', detail=f'No portfolio exists with ID {portfolio_id}').model_dump()), 404

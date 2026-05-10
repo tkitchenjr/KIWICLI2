@@ -1,6 +1,7 @@
 import pytest
 import app.service.portfolio_service as portfolio_service
 from app.models import Investment, Portfolio, User
+from app.service.portfolio_service import create_portfolio, get_portfolios_by_user, get_all_portfolios, get_portfolio_by_id, delete_portfolio
 
 @pytest.fixture(autouse=True)
 def setup(db_session):
@@ -34,9 +35,9 @@ def test_get_all_portfolios(db_session):
     assert "Portfolio 2" in names
 
 def test_get_all_portfolios_db_failure(monkeypatch):
-    def failing_get_session():
+    def failing_query(*_args, **_kwargs):
         raise Exception("Database connection error")
-    monkeypatch.setattr("app.database.get_session", failing_get_session)
+    monkeypatch.setattr(portfolio_service.db.session, 'query', failing_query)
     with pytest.raises(Exception) as e:
         portfolio_service.get_all_portfolios()
     assert "Failed to retrieve portfolios due to error: Database connection error" in str(e.value)
@@ -78,11 +79,11 @@ def test_create_portfolio_invalid_input():
         portfolio_service.create_portfolio("Test Portfolio", "", user)
 
 def test_create_portfolio_db_failure(monkeypatch):
-    def failing_get_session():
+    def failing_add(*_args, **_kwargs):
         raise Exception("Database connection error")
-    monkeypatch.setattr("app.database.get_session", failing_get_session)
+    monkeypatch.setattr(portfolio_service.db.session, 'add', failing_add)
     with pytest.raises(Exception) as e:
-        portfolio_service.create_portfolio("Fail Portfolio", "This should fail", User())
+        portfolio_service.create_portfolio("Fail Portfolio", "This should fail", 'testuser')
     assert "Failed to create portfolio due to error: Database connection error" in str(e.value)
         
 def test_delete_portfolio(setup, db_session):
@@ -111,8 +112,7 @@ def test_liquidate_investment(setup, db_session):
 def test_liquidate_entire_investment(setup, db_session):
     portfolio = setup["portfolio1"]
     portfolio_service.liquidate_investment(portfolio.id, "AAPL", 10, 150.0)
-    portfolio = db_session.query(Portfolio).filter_by(id=portfolio.id).one()
-    updated_investment = next((inv for inv in portfolio.investments if inv.ticker == "AAPL"), None)
+    updated_investment = db_session.query(Investment).filter_by(portfolio_id=portfolio.id, ticker="AAPL").one_or_none()
     assert updated_investment is None
     user = db_session.query(User).filter_by(username="testuser").one()
     assert user.balance == 1000.0 + (10 * 150.0)

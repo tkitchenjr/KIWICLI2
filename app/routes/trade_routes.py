@@ -13,6 +13,7 @@ trade_bp = Blueprint('trade', __name__)
 @requires_auth
 def execute_purchase_order():
     authenticated_username = g.current_user.get('username')
+    role = g.current_user.get('role', 'owner')
     
     execute_purchase_order_request = ExecutePurchaseOrderRequest(**request.get_json())
     
@@ -21,8 +22,14 @@ def execute_purchase_order():
     portfolio = portfolio_service.get_portfolio_by_id(execute_purchase_order_request.portfolio_id)
     if portfolio is None:
         return jsonify({'error': 'Portfolio not found'}), 404
+
+    if role not in {'owner', 'manager'}:
+        return jsonify({'error': 'Access denied'}), 403
+
+    if role == 'viewer':
+        return jsonify({'error': 'Access denied - viewers cannot execute trades'}), 403
     
-    if portfolio.owner != authenticated_username:
+    if role == 'owner' and portfolio.owner != authenticated_username:
         return jsonify({'error': 'Access denied - you can only trade in your own portfolios'}), 403
     
     trade_service.execute_purchase_order(
@@ -38,6 +45,7 @@ def execute_purchase_order():
 @requires_auth
 def liquidate_investment():
     authenticated_username = g.current_user.get('username')
+    role = g.current_user.get('role', 'owner')
     
     liquidate_investment_request = LiquidateInvestmentRequest(**request.get_json())
     
@@ -46,8 +54,14 @@ def liquidate_investment():
     portfolio = portfolio_service.get_portfolio_by_id(liquidate_investment_request.portfolio_id)
     if portfolio is None:
         return jsonify({'error': 'Portfolio not found'}), 404
+
+    if role not in {'owner', 'manager'}:
+        return jsonify({'error': 'Access denied'}), 403
+
+    if role == 'viewer':
+        return jsonify({'error': 'Access denied - viewers cannot execute trades'}), 403
     
-    if portfolio.owner != authenticated_username:
+    if role == 'owner' and portfolio.owner != authenticated_username:
         return jsonify({'error': 'Access denied - you can only trade in your own portfolios'}), 403
     
     trade_service.liquidate_investment(

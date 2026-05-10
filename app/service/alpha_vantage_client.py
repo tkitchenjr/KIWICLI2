@@ -42,7 +42,7 @@ def get_company_name(ticker: str):
     data = response.json()
 
     if not data:
-        raise AlphaVantageError('No matching ticker found.')
+        return None
     if not "Name" in data:
         return None
     
@@ -69,7 +69,7 @@ def get_price_data(ticker: str) -> dict | None:
     data = response.json()
 
     if not data:
-        raise AlphaVantageError('No price data found for the given ticker.')
+        return None
     if "Time Series (5min)" not in data:
         return None
 
