@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 *.env
 api_key.env
+node_modules
