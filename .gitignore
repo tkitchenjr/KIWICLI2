@@ -4,3 +4,5 @@ __pycache__/
 *.env
 api_key.env
 node_modules
+instance/
+*.db
