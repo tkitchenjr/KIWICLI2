@@ -1,6 +1,6 @@
 import { WebStorageStateStore } from 'oidc-client-ts'
 
-const STORAGE_TOKEN_KEY = 'kiwi.id_token'
+const STORAGE_TOKEN_KEY = 'kiwi.access_token'
 const STORAGE_USER_KEY_PREFIX = 'oidc.user:'
 
 const authorityInput = import.meta.env.VITE_COGNITO_AUTHORITY

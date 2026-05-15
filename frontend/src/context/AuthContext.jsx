@@ -43,7 +43,7 @@ function AppAuthStateProvider({ children }) {
 		}
 
 		const currentUser = oidc.user
-		if (!currentUser?.id_token || isTokenExpired(currentUser.id_token)) {
+		if (!currentUser?.access_token || isTokenExpired(currentUser.access_token)) {
 			clearAuthStorage()
 			void oidc.removeUser()
 			setUser(null)
@@ -52,9 +52,9 @@ function AppAuthStateProvider({ children }) {
 			return null
 		}
 
-		persistToken(currentUser.id_token)
+		persistToken(currentUser.access_token)
 		setUser(currentUser)
-		setToken(currentUser.id_token)
+		setToken(currentUser.access_token)
 		setIsLoading(false)
 		return currentUser
 	}, [oidc])
@@ -91,10 +91,10 @@ function AppAuthStateProvider({ children }) {
 	}, [oidc])
 
 	const completeCallback = useCallback(async () => {
-		if (oidc.user?.id_token && !isTokenExpired(oidc.user.id_token)) {
-			persistToken(oidc.user.id_token)
+		if (oidc.user?.access_token && !isTokenExpired(oidc.user.access_token)) {
+			persistToken(oidc.user.access_token)
 			setUser(oidc.user)
-			setToken(oidc.user.id_token)
+			setToken(oidc.user.access_token)
 			return oidc.user
 		}
 

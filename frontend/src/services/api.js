@@ -117,3 +117,21 @@ export function apiPatch(path, body, options = {}) {
 export function apiDelete(path, options = {}) {
 	return apiRequest(path, { ...options, method: 'DELETE' })
 }
+
+// Portfolio API functions
+export async function getPortfoliosByUser(username) {
+	return apiGet(`/portfolios/user/${encodeURIComponent(username)}`)
+}
+
+export async function createPortfolio(name, description, username) {
+	return apiPost('/portfolios/', { name, description, username })
+}
+
+export async function deletePortfolio(portfolioId) {
+	return apiDelete(`/portfolios/${portfolioId}`)
+}
+
+// User API functions
+export async function ensureCurrentUser() {
+	return apiPost('/users/me/ensure', {})
+}
