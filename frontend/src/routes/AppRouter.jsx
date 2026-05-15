@@ -8,7 +8,8 @@ function AppRouter() {
 	return (
 		<BrowserRouter>
 			<Routes>
-				<Route path="/login" element={<LoginPage />} />
+				<Route path="/" element={<LoginPage />} />
+				<Route path="/login" element={<Navigate to="/" replace />} />
 				<Route path="/callback" element={<AuthCallbackPage />} />
 				<Route
 					path="/dashboard"
@@ -18,8 +19,7 @@ function AppRouter() {
 						</ProtectedRoute>
 					}
 				/>
-				<Route path="/" element={<Navigate to="/dashboard" replace />} />
-				<Route path="*" element={<Navigate to="/dashboard" replace />} />
+				<Route path="*" element={<Navigate to="/" replace />} />
 			</Routes>
 		</BrowserRouter>
 	)

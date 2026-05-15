@@ -114,7 +114,7 @@ function AppAuthStateProvider({ children }) {
 			return
 		}
 
-		window.location.assign('/login')
+		window.location.assign('/')
 	}, [oidc])
 
 	const value = useMemo(
