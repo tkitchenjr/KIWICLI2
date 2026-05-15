@@ -7,22 +7,24 @@ import requests
 from jose import jwt, jwk, JWTError
 from flask import request, jsonify, g
 
-# Load the Cognito region, user pool ID, and client ID from environment variables.
-# Safe environment variable access - won't crash on import if not set
-COGNITO_REGION    = os.environ.get("COGNITO_REGION")
-COGNITO_POOL_ID   = os.environ.get("COGNITO_POOL_ID") 
-COGNITO_CLIENT_ID = os.environ.get("COGNITO_CLIENT_ID")
-
 # Validation helper - follows the configuration pattern
 def _validate_auth_config():
     """Validate that all required auth environment variables are set."""
-    if not COGNITO_REGION:
+    cognito_region = os.environ.get("COGNITO_REGION") or os.environ.get("VITE_COGNITO_REGION")
+    cognito_pool_id = (
+        os.environ.get("COGNITO_POOL_ID")
+        or os.environ.get("VITE_COGNITO_POOL_ID")
+        or os.environ.get("VITE_COGNITO_USER_POOL_ID")
+    )
+    cognito_client_id = os.environ.get("COGNITO_CLIENT_ID") or os.environ.get("VITE_COGNITO_CLIENT_ID")
+
+    if not cognito_region:
         raise ValueError('Cognito region is not configured. Please set the COGNITO_REGION environment variable.')
-    if not COGNITO_POOL_ID:
+    if not cognito_pool_id:
         raise ValueError('Cognito pool ID is not configured. Please set the COGNITO_POOL_ID environment variable.')
-    if not COGNITO_CLIENT_ID:
+    if not cognito_client_id:
         raise ValueError('Cognito client ID is not configured. Please set the COGNITO_CLIENT_ID environment variable.')
-    return COGNITO_REGION, COGNITO_POOL_ID, COGNITO_CLIENT_ID
+    return cognito_region, cognito_pool_id, cognito_client_id
 
 # surface attributes for jwks url with helper function that validates variables
 def _get_jwks_url():
@@ -56,13 +58,24 @@ def validate_token(token: str) -> dict:
     jwks = _get_jwks()
     public_key = jwk.construct(jwks[kid])
     
-    # Decode and verify token  
+    # Decode and verify token. Cognito access tokens identify the app in
+    # `client_id`, not always in `aud`, so skip audience verification and
+    # validate the app client explicitly below.
     region, pool_id, client_id = _validate_auth_config()  # Validates config here
-    claims = jwt.decode(token, public_key, algorithms=['RS256'], audience=client_id, issuer=f"https://cognito-idp.{region}.amazonaws.com/{pool_id}")
+    claims = jwt.decode(
+        token,
+        public_key,
+        algorithms=['RS256'],
+        issuer=f"https://cognito-idp.{region}.amazonaws.com/{pool_id}",
+        options={"verify_aud": False},
+    )
     
     # Verify it's an access token
     if claims['token_use'] != 'access':
         raise ValueError("Not an access token")
+
+    if claims.get('client_id') != client_id:
+        raise ValueError("Token was not issued for this client")
         
     return claims
 
@@ -71,6 +84,10 @@ def requires_auth(handler):
     """Require valid Cognito JWT token."""
     @functools.wraps(handler)
     def wrapper(*args, **kwargs):
+        # Allow OPTIONS requests (CORS preflight) to pass through without auth
+        if request.method == 'OPTIONS':
+            return None, 200
+        
         auth_header = request.headers.get('Authorization', '')
         if not auth_header.startswith('Bearer '):
             return jsonify({'error': 'Missing or invalid Authorization header'}), 401
