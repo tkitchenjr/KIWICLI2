@@ -1,5 +1,7 @@
+import AppRouter from './routes/AppRouter'
+
 function App() {
-  return <div>App loading...</div>
+	return <AppRouter />
 }
 
 export default App
