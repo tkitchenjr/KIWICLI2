@@ -4,7 +4,6 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
-	useRef,
 	useState,
 } from 'react'
 import {
@@ -16,7 +15,6 @@ import {
 	clearAuthStorage,
 	getCognitoLogoutUrl,
 	getMissingOidcConfig,
-	getStoredToken,
 	isOidcConfigured,
 	isTokenExpired,
 	persistToken,
@@ -25,44 +23,11 @@ import {
 const AppAuthContext = createContext(null)
 const LOGOUT_FLAG_KEY = 'kiwi.logged_out'
 
-const apiBaseUrlRaw = import.meta.env.VITE_API_BASE_URL || ''
-const apiBaseUrl = apiBaseUrlRaw.replace(/\/+$/, '')
-
-function shouldAttachToken(url) {
-	if (url.startsWith(window.location.origin) || url.startsWith('/')) {
-		return true
-	}
-
-	if (!apiBaseUrl) {
-		return false
-	}
-
-	return url.startsWith(apiBaseUrl)
-}
-
-function toAbsoluteUrl(input) {
-	if (typeof input === 'string') {
-		return new URL(input, window.location.origin).toString()
-	}
-
-	if (input instanceof URL) {
-		return input.toString()
-	}
-
-	if (input instanceof Request) {
-		return input.url
-	}
-
-	return ''
-}
-
 function AppAuthStateProvider({ children }) {
 	const oidc = useReactOidcAuth()
 	const [user, setUser] = useState(null)
 	const [token, setToken] = useState(null)
 	const [isLoading, setIsLoading] = useState(true)
-
-	const originalFetchRef = useRef(window.fetch.bind(window))
 
 	const refreshAuthState = useCallback(async () => {
 		if (!isOidcConfigured()) {
@@ -120,44 +85,6 @@ function AppAuthStateProvider({ children }) {
 			ignore = true
 		}
 	}, [refreshAuthState])
-
-	useEffect(() => {
-		window.fetch = async (input, init) => {
-			const absoluteUrl = toAbsoluteUrl(input)
-			const shouldHandle = absoluteUrl && shouldAttachToken(absoluteUrl)
-
-			if (!shouldHandle) {
-				return originalFetchRef.current(input, init)
-			}
-
-			const storedToken = getStoredToken()
-			if (!storedToken || isTokenExpired(storedToken)) {
-				clearAuthStorage()
-				setUser(null)
-				setToken(null)
-				if (window.location.pathname !== '/login') {
-					window.location.assign('/login')
-				}
-				throw new Error('Authentication required. Redirecting to login.')
-			}
-
-			const originalRequest =
-				input instanceof Request ? input : new Request(input, init || {})
-			const headers = new Headers(originalRequest.headers)
-			headers.set('Authorization', `Bearer ${storedToken}`)
-
-			const authenticatedRequest = new Request(originalRequest, {
-				headers,
-				body: init?.body,
-			})
-
-			return originalFetchRef.current(authenticatedRequest)
-		}
-
-		return () => {
-			window.fetch = originalFetchRef.current
-		}
-	}, [])
 
 	const startLogin = useCallback(async (returnTo = '/dashboard') => {
 		await oidc.signinRedirect({ state: { returnTo } })
