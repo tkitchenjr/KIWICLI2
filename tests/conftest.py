@@ -7,9 +7,9 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 from typing import Generator
 
-import app.database as db
+import app.db as db
 import pytest
-from app.database import Base
+from app.db import db as sqlalchemy_db
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -25,7 +25,7 @@ def engine():
     eng = create_engine('sqlite+pysqlite:///:memory:', future=True, echo=False)
 
     # initialize all database objects
-    Base.metadata.create_all(eng)
+    sqlalchemy_db.Model.metadata.create_all(eng)
 
     yield eng
     eng.dispose()
