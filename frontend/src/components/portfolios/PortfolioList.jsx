@@ -11,14 +11,6 @@ function PortfolioList({ portfolios, loading, error, selectedPortfolioId, onSele
 		)
 	}
 
-	if (error) {
-		return (
-			<div className="alert alert-danger" role="alert">
-				<strong>Error:</strong> {error}
-			</div>
-		)
-	}
-
 	if (!portfolios || portfolios.length === 0) {
 		return (
 			<div className="alert alert-info" role="alert">
@@ -29,6 +21,11 @@ function PortfolioList({ portfolios, loading, error, selectedPortfolioId, onSele
 
 	return (
 		<div>
+			{error && (
+				<div className="alert alert-danger mb-3" role="alert">
+					<strong>Error:</strong> {error}
+				</div>
+			)}
 			{portfolios.map(portfolio => (
 				<PortfolioCard
 					key={portfolio.id}

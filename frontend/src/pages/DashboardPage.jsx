@@ -202,6 +202,15 @@ function DashboardPage() {
 		setPortfolioError(errorMessage)
 	}
 
+	useEffect(() => {
+		if (portfolioError) {
+			const timer = setTimeout(() => {
+				setPortfolioError('')
+			}, 5000)
+			return () => clearTimeout(timer)
+		}
+	}, [portfolioError])
+
 	return (
 		<main className="container py-4">
 			<AppNavbar />
