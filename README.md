@@ -78,7 +78,7 @@ cd KIWICLI2
    pip install -r requirements.txt
    ```
 
-3. **Set environment variables:**
+3. **Generate and configure environment variables:**
 
    Create a `.env` file in the root directory and configure the following variables:
 
@@ -86,9 +86,25 @@ cd KIWICLI2
    FLASK_APP=app.main
    FLASK_ENV=development
    PORT=5050
+   ALPHA_VANTAGE_API_KEY=your_alpha_vantage_api_key
+   AWS_COGNITO_USER_POOL_ID=your_cognito_user_pool_id
+   AWS_COGNITO_CLIENT_ID=your_cognito_client_id
    ```
 
-   **Note:** Do not include sensitive data like API keys in the README.
+   **Required Configuration Steps:**
+
+   - **ALPHA_VANTAGE_API_KEY**: 
+     1. Go to [Alpha Vantage](https://www.alphavantage.co/) and sign up for a free account.
+     2. Generate your API key from the dashboard.
+     3. Replace `your_alpha_vantage_api_key` with your actual API key in the `.env` file.
+
+   - **AWS_COGNITO_USER_POOL_ID** and **AWS_COGNITO_CLIENT_ID**:
+     1. Log in to your AWS account and navigate to Amazon Cognito.
+     2. Create a User Pool and App Client (or use existing ones).
+     3. Copy the User Pool ID and App Client ID from the Cognito dashboard.
+     4. Replace the placeholder values in the `.env` file with your actual credentials.
+
+   **Security Note:** Never commit the `.env` file to version control. Ensure it is added to `.gitignore`.
 
 4. **Run the backend server:**
 
