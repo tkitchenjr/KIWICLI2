@@ -158,6 +158,3 @@ To run the functional application:
 
 For deployment, ensure you configure production-ready settings for both the frontend and backend. Refer to the documentation for your hosting provider for specific instructions.
 
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
