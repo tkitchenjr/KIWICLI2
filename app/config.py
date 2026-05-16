@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+load_dotenv('frontend/.env')
 load_dotenv('api_key.env')
 
 
@@ -17,7 +18,7 @@ class TestConfig(Config):
 
 
 class DevelopmentConfig(Config):
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://kiwi_local:kiwilocaldb@localhost:3306/kiwilocal'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite+pysqlite:///kiwi_dev.db'
     DEBUG = True
     SQLALCHEMY_ECHO = True
 

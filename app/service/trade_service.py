@@ -2,13 +2,9 @@ import datetime
 
 from app.db import db
 from app.models import Investment, Portfolio, Transaction
-from app.service.alpha_vantage_client import get_quote
+from app.service.alpha_vantage_client import get_price_data
 
 class TradeExecutionException(Exception):
-    pass
-
-
-class InsufficientFundsError(Exception):
     pass
 
 
@@ -23,7 +19,6 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
 
     Raises:
         TradeExecutionException: If there is an error during the trade execution.
-        InsufficientFundsError: If the user has insufficient funds to complete the purchase.
     """
     try:
         if portfolio_id is None or not ticker or not quantity or quantity <= 0:
@@ -37,12 +32,11 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
         if not user:
             raise TradeExecutionException(f'User associated with the portfolio ({portfolio_id}) does not exist.')
     
-        security = get_quote(ticker)
-        if not security:
+        security_price_data = get_price_data(ticker)
+        if not security_price_data:
             raise TradeExecutionException(f'Security with ticker {ticker} does not exist.')
-        total_cost = security.price * quantity
-        if user.balance < total_cost:
-            raise InsufficientFundsError('Insufficient funds to complete the purchase.')
+        unit_price = float(security_price_data['close'])
+        total_cost = unit_price * quantity
 
         existing_investment = next((inv for inv in portfolio.investments if inv.ticker == ticker), None)
         if existing_investment:
@@ -57,7 +51,7 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
                 username=user.username,
                 ticker=ticker,
                 quantity=quantity,
-                price=security.price,
+                price=unit_price,
                 transaction_type='BUY',
                 date_time=datetime.datetime.now(),
             )
@@ -82,21 +76,26 @@ def liquidate_investment(portfolio_id: int, ticker: str, quantity: int, sale_pri
             or if a database error occurs while recording the sale.
     """
     try:
+        if portfolio_id is None or not ticker or not quantity or quantity <= 0:
+            raise TradeExecutionException(
+                f'Invalid liquidation parameters [portfolio_id={portfolio_id}, ticker={ticker}, quantity={quantity}]'
+            )
         portfolio = db.session.query(Portfolio).filter_by(id=portfolio_id).one_or_none()
         if not portfolio:
             raise TradeExecutionException(f'Portfolio with id {portfolio_id} does not exist')
         user = portfolio.user
+        normalized_ticker = ticker.strip().upper()
         investment = next(
-            (inv for inv in portfolio.investments if inv.security.ticker == ticker),
+            (inv for inv in portfolio.investments if inv.ticker == normalized_ticker),
             None,
         )
         if not investment:
             raise TradeExecutionException(
-                f'No investment with ticker {ticker} exists in portfolio with id {portfolio_id}'
+                f'No investment with ticker {normalized_ticker} exists in portfolio with id {portfolio_id}'
             )
         if investment.quantity < quantity:
             raise TradeExecutionException(
-                f'Cannot liquidate {quantity} shares of {ticker}. Only {investment.quantity} shares available in portfolio'
+                f'Cannot liquidate {quantity} shares of {normalized_ticker}. Only {investment.quantity} shares available in portfolio'
             )
         total_proceeds = sale_price * quantity
         user.balance += total_proceeds
@@ -108,7 +107,7 @@ def liquidate_investment(portfolio_id: int, ticker: str, quantity: int, sale_pri
             Transaction(
                 portfolio_id=portfolio.id,
                 username=user.username,
-                ticker=ticker,
+                ticker=normalized_ticker,
                 quantity=quantity,
                 price=sale_price,
                 transaction_type='SELL',

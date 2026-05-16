@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Optional
 
 # Portfolio Request Schemas
 class CreatePortfolioRequest(BaseModel):
@@ -28,4 +29,4 @@ class LiquidateInvestmentRequest(BaseModel):
     portfolio_id: int = Field(gt=0, description="iterative ID of the portfolio to liquidate the investment for")
     ticker: str = Field(min_length=1, max_length=100, description="Stock ticker symbol to liquidate")
     quantity: int = Field(gt=0, description="Quantity of the stock to liquidate")
-    sale_price: float = Field(gt=0, description="Sale price per unit for the stock being liquidated")
+    sale_price: Optional[float] = Field(default=None, gt=0, description="Sale price per unit for the stock being liquidated")
