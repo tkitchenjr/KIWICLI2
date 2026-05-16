@@ -56,7 +56,7 @@ function LoginPage() {
 					<ul>
 						<li>Create and manage multiple portfolios</li>
 						<li>Buy and sell securities instantly</li>
-						<li>Full transaction history with filters</li>
+						<li>View portfolio transactions</li>
 					</ul>
 				</div>
 			</section>
