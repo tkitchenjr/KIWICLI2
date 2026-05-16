@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react'
+import HoldingsPanel from '../components/holdings/HoldingsPanel'
 import AppNavbar from '../components/layout/AppNavbar'
-import PortfolioList from '../components/portfolios/PortfolioList'
 import CreatePortfolioModal from '../components/portfolios/CreatePortfolioModal'
+import PortfolioList from '../components/portfolios/PortfolioList'
 import { useAuth } from '../context/AuthContext'
-import { getPortfoliosByUser, ensureCurrentUser } from '../services/api'
+import {
+	ensureCurrentUser,
+	getPortfolioById,
+	getPortfolioTransactions,
+	getPortfoliosByUser,
+} from '../services/api'
 
 function DashboardPage() {
 	const { user, logout } = useAuth()
@@ -13,15 +19,21 @@ function DashboardPage() {
 	const [portfolioError, setPortfolioError] = useState('')
 	const [isModalOpen, setIsModalOpen] = useState(false)
 	const [accountUsername, setAccountUsername] = useState('')
+	const [selectedPortfolioId, setSelectedPortfolioId] = useState(null)
+	const [selectedPortfolio, setSelectedPortfolio] = useState(null)
+	const [holdings, setHoldings] = useState([])
+	const [holdingsLoading, setHoldingsLoading] = useState(false)
+	const [holdingsError, setHoldingsError] = useState('')
+	const [transactions, setTransactions] = useState([])
+	const [transactionsLoading, setTransactionsLoading] = useState(false)
+	const [transactionsError, setTransactionsError] = useState('')
 
-	// Extract username from OIDC user profile
 	const fallbackUsername =
 		user?.profile?.preferred_username ||
 		user?.profile?.['cognito:username'] ||
 		user?.profile?.email ||
 		''
 
-	// Fetch portfolios on mount and when username changes
 	useEffect(() => {
 		async function loadPortfolios() {
 			if (!fallbackUsername) {
@@ -31,30 +43,44 @@ function DashboardPage() {
 
 			setLoading(true)
 			setPortfolioError('')
+
 			try {
-				// Ensure user exists in backend (auto-create from Cognito profile if needed)
-				const ensuredUser = await ensureCurrentUser()
-				const resolvedUsername = ensuredUser?.username || fallbackUsername
+				let resolvedUsername = fallbackUsername
+				try {
+					const ensuredUser = await ensureCurrentUser()
+					resolvedUsername = ensuredUser?.username || fallbackUsername
+				} catch (ensureError) {
+					const ensureMessage =
+						ensureError instanceof Error ? ensureError.message : 'User ensure failed'
+					console.warn('ensureCurrentUser failed; continuing with fallback username', {
+						fallbackUsername,
+						error: ensureMessage,
+					})
+				}
+
 				setAccountUsername(resolvedUsername)
-				
-				// Now fetch portfolios
+
 				const data = await getPortfoliosByUser(resolvedUsername)
-				setPortfolios(Array.isArray(data) ? data : [])
+				const normalizedPortfolios = Array.isArray(data) ? data : []
+				setPortfolios(normalizedPortfolios)
+
+				setSelectedPortfolioId((previousId) => {
+					if (!normalizedPortfolios.length) {
+						return null
+					}
+
+					const stillExists = normalizedPortfolios.some((portfolio) => portfolio.id === previousId)
+					if (stillExists) {
+						return previousId
+					}
+
+					return normalizedPortfolios[0].id
+				})
 			} catch (err) {
 				const message = err instanceof Error ? err.message : 'Failed to load portfolios'
-				console.error('Portfolio fetch error:', { username: fallbackUsername, error: message })
-				
-				// Check if error is "User not found" - this means we need to create the user first
-				if (message.includes('not found') || message.includes('User')) {
-					setPortfolioError(
-						`User account "${fallbackUsername}" not found in database. ` +
-						'Please ensure your account is set up. If this is your first login, contact support.'
-					)
-				} else {
-					setPortfolioError(message)
-				}
-				
+				setPortfolioError(message)
 				setPortfolios([])
+				setSelectedPortfolioId(null)
 			} finally {
 				setLoading(false)
 			}
@@ -62,6 +88,74 @@ function DashboardPage() {
 
 		loadPortfolios()
 	}, [fallbackUsername])
+
+	useEffect(() => {
+		async function loadPortfolioDetails() {
+			if (!selectedPortfolioId) {
+				setSelectedPortfolio(null)
+				setHoldings([])
+				setTransactions([])
+				setHoldingsError('')
+				setTransactionsError('')
+				return
+			}
+
+			setHoldingsLoading(true)
+			setTransactionsLoading(true)
+			setHoldingsError('')
+			setTransactionsError('')
+
+			try {
+				const [portfolioDetails, portfolioTransactions] = await Promise.all([
+					getPortfolioById(selectedPortfolioId),
+					getPortfolioTransactions(selectedPortfolioId),
+				])
+
+				setSelectedPortfolio(portfolioDetails || null)
+				setHoldings(Array.isArray(portfolioDetails?.investments) ? portfolioDetails.investments : [])
+				setTransactions(Array.isArray(portfolioTransactions) ? portfolioTransactions : [])
+			} catch (err) {
+				const message = err instanceof Error ? err.message : 'Failed to load selected portfolio details'
+				setHoldingsError(message)
+				setTransactionsError(message)
+				setHoldings([])
+				setTransactions([])
+			} finally {
+				setHoldingsLoading(false)
+				setTransactionsLoading(false)
+			}
+		}
+
+		loadPortfolioDetails()
+	}, [selectedPortfolioId])
+
+	async function refreshSelectedPortfolioData() {
+		if (!selectedPortfolioId) {
+			return
+		}
+
+		setHoldingsLoading(true)
+		setTransactionsLoading(true)
+		setHoldingsError('')
+		setTransactionsError('')
+
+		try {
+			const [portfolioDetails, portfolioTransactions] = await Promise.all([
+				getPortfolioById(selectedPortfolioId),
+				getPortfolioTransactions(selectedPortfolioId),
+			])
+			setSelectedPortfolio(portfolioDetails || null)
+			setHoldings(Array.isArray(portfolioDetails?.investments) ? portfolioDetails.investments : [])
+			setTransactions(Array.isArray(portfolioTransactions) ? portfolioTransactions : [])
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to refresh portfolio data'
+			setHoldingsError(message)
+			setTransactionsError(message)
+		} finally {
+			setHoldingsLoading(false)
+			setTransactionsLoading(false)
+		}
+	}
 
 	async function handleLogout() {
 		setError('')
@@ -74,31 +168,34 @@ function DashboardPage() {
 	}
 
 	function handlePortfolioCreated(newPortfolio) {
-		// Append new portfolio to list or refresh based on response
-		if (newPortfolio && newPortfolio.portfolio_id) {
-			// Backend returns {message, portfolio_id}. Fetch fresh data to get full portfolio object.
-			const freshPortfolio = {
-				id: newPortfolio.portfolio_id,
-				name: '',
-				description: '',
-			}
-			setPortfolios(prev => [...prev, freshPortfolio])
-			// Optionally refresh the list to get the new portfolio data
-			if (accountUsername) {
-				getPortfoliosByUser(accountUsername)
-					.then(data => {
-						setPortfolios(Array.isArray(data) ? data : [])
-					})
-					.catch(() => {
-						// Keep the optimistic update even if refresh fails
-					})
-			}
+		if (!newPortfolio?.portfolio_id || !accountUsername) {
+			return
 		}
+
+		setPortfolioError('')
+		getPortfoliosByUser(accountUsername)
+			.then((data) => {
+				const normalizedPortfolios = Array.isArray(data) ? data : []
+				setPortfolios(normalizedPortfolios)
+				setSelectedPortfolioId(newPortfolio.portfolio_id)
+			})
+			.catch((err) => {
+				setPortfolioError(err instanceof Error ? err.message : 'Failed to refresh portfolios')
+			})
+	}
+
+	function handleSelectPortfolio(portfolio) {
+		setSelectedPortfolioId(portfolio.id)
 	}
 
 	function handlePortfolioDeleted(portfolioId) {
-		setPortfolios(prev => prev.filter(p => p.id !== portfolioId))
+		const remaining = portfolios.filter((portfolio) => portfolio.id !== portfolioId)
+		setPortfolios(remaining)
 		setPortfolioError('')
+
+		if (selectedPortfolioId === portfolioId) {
+			setSelectedPortfolioId(remaining.length ? remaining[0].id : null)
+		}
 	}
 
 	function handlePortfolioDeleteError(errorMessage) {
@@ -109,12 +206,15 @@ function DashboardPage() {
 		<main className="container py-4">
 			<AppNavbar />
 
-			<section className="mb-4">
-				<h1 className="display-6 mb-2">Dashboard</h1>
-				<p className="text-muted mb-0">
-					You are signed in{user?.profile?.email ? ` as ${user.profile.email}` : ''}.
-					{accountUsername && <span className="ms-3 badge bg-info">Username: {accountUsername}</span>}
-				</p>
+			<section className="mb-4 d-flex justify-content-between align-items-end">
+				<div>
+					<h1 className="display-6 mb-2">Dashboard</h1>
+					<p className="text-muted mb-0">
+						You are signed in{user?.profile?.email ? ` as ${user.profile.email}` : ''}.
+						{accountUsername && <span className="ms-3 badge bg-info">Username: {accountUsername}</span>}
+					</p>
+				</div>
+				<button className="btn btn-outline-secondary btn-sm" onClick={handleLogout}>Sign out</button>
 			</section>
 
 			{error && (
@@ -124,8 +224,8 @@ function DashboardPage() {
 			)}
 
 			<div className="row g-4">
-				<div className="col-12 col-lg-6">
-					<div className="card h-100 shadow-sm">
+				<div className="col-12 col-xl-5">
+					<div className="card shadow-sm">
 						<div className="card-header d-flex justify-content-between align-items-center">
 							<h2 className="h4 mb-0">Portfolios</h2>
 							<button
@@ -141,11 +241,14 @@ function DashboardPage() {
 								portfolios={portfolios}
 								loading={loading}
 								error={portfolioError}
+								selectedPortfolioId={selectedPortfolioId}
+								onSelect={handleSelectPortfolio}
 								onDelete={handlePortfolioDeleted}
 								onDeleteError={handlePortfolioDeleteError}
 							/>
 						</div>
 					</div>
+
 					<CreatePortfolioModal
 						isOpen={isModalOpen}
 						onClose={() => setIsModalOpen(false)}
@@ -154,32 +257,72 @@ function DashboardPage() {
 					/>
 				</div>
 
-				<div className="col-12 col-lg-6">
-					<div className="card h-100 shadow-sm">
-						<div className="card-body">
-							<h2 className="h4 card-title">Holdings</h2>
-							<p className="card-text text-muted">Current positions and market value snapshots will appear here.</p>
-							<div className="border rounded-3 p-3 bg-light text-muted">Placeholder for holdings table or cards.</div>
-						</div>
-					</div>
+				<div className="col-12 col-xl-7">
+					<HoldingsPanel
+						selectedPortfolio={selectedPortfolio}
+						holdings={holdings}
+						holdingsLoading={holdingsLoading}
+						holdingsError={holdingsError}
+						onTradeSuccess={refreshSelectedPortfolioData}
+					/>
 				</div>
 
-				<div className="col-12 col-lg-6">
-					<div className="card h-100 shadow-sm">
-						<div className="card-body">
-							<h2 className="h4 card-title">Trade</h2>
-							<p className="card-text text-muted">Buy and sell actions will be wired into this section.</p>
-							<div className="border rounded-3 p-3 bg-light text-muted">Placeholder for trade form and order entry.</div>
-						</div>
-					</div>
-				</div>
-
-				<div className="col-12 col-lg-6">
-					<div className="card h-100 shadow-sm">
+				<div className="col-12">
+					<div className="card shadow-sm">
 						<div className="card-body">
 							<h2 className="h4 card-title">Transactions</h2>
-							<p className="card-text text-muted">Recent activity and trade history will appear here.</p>
-							<div className="border rounded-3 p-3 bg-light text-muted">Placeholder for transaction timeline or table.</div>
+							<p className="card-text text-muted">
+								{selectedPortfolio
+									? `Recent activity for ${selectedPortfolio.name}`
+									: 'Select a portfolio to view transaction history.'}
+							</p>
+
+							{transactionsError && (
+								<div className="alert alert-danger py-2" role="alert">
+									{transactionsError}
+								</div>
+							)}
+
+							{transactionsLoading ? (
+								<div className="text-center py-3">
+									<div className="spinner-border" role="status">
+										<span className="visually-hidden">Loading transactions...</span>
+									</div>
+								</div>
+							) : transactions.length === 0 ? (
+								<div className="alert alert-info mb-0" role="alert">
+									No transactions for this portfolio yet.
+								</div>
+							) : (
+								<div className="table-responsive">
+									<table className="table table-sm align-middle mb-0">
+										<thead>
+											<tr>
+												<th scope="col">Date</th>
+												<th scope="col">Type</th>
+												<th scope="col">Ticker</th>
+												<th scope="col">Qty</th>
+												<th scope="col">Price</th>
+											</tr>
+										</thead>
+										<tbody>
+											{transactions.map((transaction) => (
+												<tr key={transaction.transaction_id}>
+													<td>{new Date(transaction.date_time).toLocaleString()}</td>
+													<td>
+														<span className={`badge ${transaction.transaction_type === 'BUY' ? 'text-bg-success' : 'text-bg-danger'}`}>
+															{transaction.transaction_type}
+														</span>
+													</td>
+													<td>{transaction.ticker}</td>
+													<td>{transaction.quantity}</td>
+													<td>${Number(transaction.price).toFixed(2)}</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</div>
+							)}
 						</div>
 					</div>
 				</div>

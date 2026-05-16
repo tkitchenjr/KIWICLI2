@@ -24,7 +24,10 @@ function DeletePortfolioButton({ portfolioId, portfolioName, onDelete, onDeleteE
 	return (
 		<button
 			className="btn btn-sm btn-outline-danger"
-			onClick={handleDelete}
+			onClick={(event) => {
+				event.stopPropagation()
+				handleDelete()
+			}}
 			disabled={isDeleting}
 		>
 			{isDeleting ? 'Deleting...' : 'Delete'}

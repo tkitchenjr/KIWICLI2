@@ -1,6 +1,6 @@
 import PortfolioCard from './PortfolioCard'
 
-function PortfolioList({ portfolios, loading, error, onDelete, onDeleteError }) {
+function PortfolioList({ portfolios, loading, error, selectedPortfolioId, onSelect, onDelete, onDeleteError }) {
 	if (loading) {
 		return (
 			<div className="text-center py-4">
@@ -33,6 +33,8 @@ function PortfolioList({ portfolios, loading, error, onDelete, onDeleteError }) 
 				<PortfolioCard
 					key={portfolio.id}
 					portfolio={portfolio}
+					isSelected={portfolio.id === selectedPortfolioId}
+					onSelect={onSelect}
 					onDelete={onDelete}
 					onDeleteError={onDeleteError}
 				/>

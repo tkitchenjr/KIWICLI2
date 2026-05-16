@@ -65,9 +65,18 @@ def delete_portfolio(portfolio_id):
 	portfolio = portfolio_service.get_portfolio_by_id(portfolio_id)
 	if portfolio is None:
 		return jsonify(ErrorResponse(error='Not found', detail=f'No portfolio exists with ID {portfolio_id}').model_dump()), 404
-	portfolio_service.delete_portfolio(portfolio_id)
-	db.session.commit()
-	return jsonify({'message': 'Portfolio deleted successfully'}), 200
+	try:
+		portfolio_service.delete_portfolio(portfolio_id)
+		db.session.commit()
+		return jsonify({'message': 'Portfolio deleted successfully'}), 200
+	except Exception as error:
+		db.session.rollback()
+		return jsonify(
+			ErrorResponse(
+				error='Delete blocked',
+				detail='Cannot delete portfolio while holdings or related records still exist.'
+			).model_dump()
+		), 400
 
 @portfolio_bp.route('/<int:portfolio_id>/transactions', methods=['GET'])
 def get_portfolio_transactions(portfolio_id):

@@ -42,7 +42,13 @@ async function parseResponse(response) {
 		if (isJson) {
 			try {
 				const errorBody = await response.json()
-				message = errorBody?.error || errorBody?.message || message
+				const base = errorBody?.error || errorBody?.message
+				const detail = errorBody?.detail
+				if (base && detail) {
+					message = `${base}: ${detail}`
+				} else {
+					message = base || detail || message
+				}
 			} catch {
 				// Keep fallback status message.
 			}
@@ -131,7 +137,32 @@ export async function deletePortfolio(portfolioId) {
 	return apiDelete(`/portfolios/${portfolioId}`)
 }
 
+export async function getPortfolioById(portfolioId) {
+	return apiGet(`/portfolios/${portfolioId}`)
+}
+
+export async function getPortfolioTransactions(portfolioId) {
+	return apiGet(`/portfolios/${portfolioId}/transactions`)
+}
+
 // User API functions
 export async function ensureCurrentUser() {
 	return apiPost('/users/me/ensure', {})
+}
+
+// Trading API functions
+export async function executeBuyOrder(portfolioId, ticker, quantity) {
+	return apiPost('/trades/buy', {
+		portfolio_id: portfolioId,
+		ticker,
+		quantity,
+	})
+}
+
+export async function executeSellOrder(portfolioId, ticker, quantity) {
+	return apiPost('/trades/sell', {
+		portfolio_id: portfolioId,
+		ticker,
+		quantity,
+	})
 }
